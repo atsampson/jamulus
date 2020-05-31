@@ -94,6 +94,17 @@ int main ( int argc, char** argv )
     // Start with first argument, therefore "i = 1"
     for ( int i = 1; i < argc; i++ )
     {
+        // Fuzz test mode flag -------------------------------------------------
+        if ( GetFlagArgument ( argv,
+                               i,
+                               "-Z",
+                               "--fuzz" ) )
+        {
+            ParseFuzzInput ();
+            return 0;
+        }
+
+
         // Server mode flag ----------------------------------------------------
         if ( GetFlagArgument ( argv,
                                i,

@@ -350,3 +350,59 @@ public slots:
         OnSendProtMessage ( vecMessage );
     }
 };
+
+// XXX should be in a .cpp
+static void ParseFuzzInput ()
+{
+    long             iNumBytesRead = 0;
+    long             iBytesLeft = 1024;
+    CVector<uint8_t> vecbyRecBuf ( iBytesLeft );
+
+    // read from stdin until EOF, or max packet size reached
+    while ( iBytesLeft > 0 )
+    {
+        long iResult = read ( 0,
+                              (char *) &vecbyRecBuf[iNumBytesRead],
+                              iBytesLeft );
+        if ( iResult <= 0 )
+        {
+            break;
+        }
+
+        iNumBytesRead += iResult;
+        iBytesLeft -= iResult;
+    }
+
+    // feed the data to the protocol parser
+    CVector<uint8_t> vecbyMesBodyData;
+    int              iRecCounter;
+    int              iRecID;
+    if ( !CProtocol::ParseMessageFrame ( vecbyRecBuf,
+                                         iNumBytesRead,
+                                         vecbyMesBodyData,
+                                         iRecCounter,
+                                         iRecID ) )
+    {
+        CProtocol Protocol;
+
+        // this is a protocol message, check the type of the message
+        if ( CProtocol::IsConnectionLessMessageID ( iRecID ) )
+        {
+            CHostAddress RecHostAddr ( QHostAddress ( QHostAddress::LocalHost ),
+                                       12345 );
+
+            Protocol.ParseConnectionLessMessageBody ( vecbyMesBodyData,
+                                                      iRecID,
+                                                      RecHostAddr );
+        }
+        else
+        {
+            Protocol.ParseMessageBody ( vecbyMesBodyData, iRecCounter, iRecID );
+        }
+    }
+    else
+    {
+        // this is most probably a regular audio packet
+        // XXX
+    }
+}
