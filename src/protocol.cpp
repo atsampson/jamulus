@@ -2453,10 +2453,12 @@ bool CProtocol::ParseMessageFrame ( const CVector<uint8_t>& vecbyData,
         CRCObj.AddByte ( static_cast<uint8_t> ( GetValFromStream ( vecbyData, iCurPos, 1 ) ) );
     }
 
+#if 0
     if ( CRCObj.GetCRC () != GetValFromStream ( vecbyData, iCurPos, 2 ) )
     {
         return true; // return error code
     }
+#endif
 
 
     // Extract actual data -----------------------------------------------------
