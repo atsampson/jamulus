@@ -34,6 +34,8 @@
 #include "protocol.h"
 #include "util.h"
 
+#include <cstdio>
+#undef GENERATE
 
 /* Classes ********************************************************************/
 class CTestbench : public QObject
@@ -83,7 +85,11 @@ protected:
 
     QString GenRandomString() const
     {
+#ifdef GENERATE
+        const int iLen      = GenRandomIntInRange ( 1, 4 );
+#else
         const int iLen      = GenRandomIntInRange ( 0, 111 );
+#endif
         QString   strReturn = "";
 
         for ( int i = 0; i < iLen; i++ )
@@ -126,7 +132,12 @@ public slots:
         ESvrRegResult          eSvrRegResult;
 
         // generate random protocol message
+#ifdef GENERATE
+        for ( int i = 0; i <= 34; i++ )
+        switch ( i )
+#else
         switch ( GenRandomIntInRange ( 0, 34 ) )
+#endif
         {
         case 0: // PROTMESSID_JITT_BUF_SIZE
             Protocol.CreateJitBufMes ( GenRandomIntInRange ( 0, 10 ) );
@@ -336,9 +347,21 @@ public slots:
 
     void OnSendProtMessage ( CVector<uint8_t> vecMessage )
     {
+#ifdef GENERATE
+        static int count = 0;
+        fprintf(stderr, "message %d = %d\n", count, vecMessage[2]);
+        char filename[80];
+        snprintf(filename, sizeof filename, "in4/sample%03d", count++);
+        FILE *f = fopen(filename, "w");
+        fwrite(&vecMessage[0], 1, vecMessage.Size(), f);
+        fclose(f);
+
+        if (count > 31) exit(0);
+#else
         UdpSocket.writeDatagram (
             (const char*) &( (CVector<uint8_t>) vecMessage )[0],
             vecMessage.Size(), QHostAddress ( sAddress ), iPort );
+#endif
 
         // reset protocol so that we do not have to wait for an acknowledge to
         // send the next message
