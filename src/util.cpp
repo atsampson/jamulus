@@ -1407,6 +1407,7 @@ void DebugError ( const QString& pchErDescr,
                   const QString& pchPar2Descr,
                   const double   dPar2 )
 {
+#if 0
     QFile File ( "DebugError.dat" );
     if ( File.open ( QIODevice::Append ) )
     {
@@ -1422,6 +1423,9 @@ void DebugError ( const QString& pchErDescr,
     }
     printf ( "\nDebug error! For more information see test/DebugError.dat\n" );
     exit ( 1 );
+#else
+    abort();
+#endif
 }
 
 QString GetVersionAndNameStr ( const bool bWithHtml )

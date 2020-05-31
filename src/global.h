@@ -69,8 +69,8 @@ LED bar:      lbr
 
 /* Definitions ****************************************************************/
 // define this macro to get debug output
-//#define _DEBUG_
-#undef _DEBUG_
+#define _DEBUG_
+//#undef _DEBUG_
 
 // define this macro if the version and operating system debugging shall
 // be enabled in the client (the ping time column in the connect dialog then
