@@ -29,6 +29,11 @@
 /* Implementation *************************************************************/
 void CSocket::Init ( const quint16 iPortNumber )
 {
+#if 1
+    UdpSocket = -1;
+    return;
+#endif
+
 #ifdef _WIN32
     // for the Windows socket usage we have to start it up first
 
@@ -140,6 +145,11 @@ void CSocket::Init ( const quint16 iPortNumber )
 
 void CSocket::Close()
 {
+    if ( UdpSocket == -1 )
+    {
+        return;
+    }
+
 #ifdef _WIN32
     // closesocket will cause recvfrom to return with an error because the
     // socket is closed -> then the thread can safely be shut down
@@ -155,6 +165,10 @@ void CSocket::Close()
 
 CSocket::~CSocket()
 {
+    if ( UdpSocket == -1 )
+    {
+        return;
+    }
     // cleanup the socket (on Windows the WSA cleanup must also be called)
 #ifdef _WIN32
     closesocket ( UdpSocket );
@@ -167,6 +181,11 @@ CSocket::~CSocket()
 void CSocket::SendPacket ( const CVector<uint8_t>& vecbySendBuf,
                            const CHostAddress&     HostAddr )
 {
+    if ( UdpSocket == -1 )
+    {
+        return;
+    }
+
     QMutexLocker locker ( &Mutex );
 
     const int iVecSizeOut = vecbySendBuf.Size();
