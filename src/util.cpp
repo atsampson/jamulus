@@ -954,6 +954,7 @@ bool NetworkUtil::ParseNetworkAddress ( QString       strAddress,
 
 CHostAddress NetworkUtil::GetLocalAddress()
 {
+#if 0
     QTcpSocket socket;
     socket.connectToHost ( WELL_KNOWN_HOST, WELL_KNOWN_PORT );
 
@@ -969,6 +970,9 @@ CHostAddress NetworkUtil::GetLocalAddress()
 
         return CHostAddress(  QHostAddress::LocalHost, 0 );
     }
+#else
+    return CHostAddress(  QHostAddress::LocalHost, 0 );
+#endif
 }
 
 QString NetworkUtil::GetCentralServerAddress ( const ECSAddType eCentralServerAddressType,
