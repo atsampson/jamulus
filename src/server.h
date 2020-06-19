@@ -185,6 +185,9 @@ public:
 
     virtual ~CServer();
 
+    void ProcessFuzzInput ( CVector<uint8_t>& vecbyBuf,
+                            int iNumBytesRead );
+
     void Start();
     void Stop();
     bool IsRunning() { return HighPrecisionTimer.isActive(); }

@@ -504,9 +504,138 @@ CServer::CServer ( const int          iNewMaxNumChan,
 
     connectChannelSignalsToServerSlots<MAX_NUM_CHANNELS>();
 
+#if 0
     // start the socket (it is important to start the socket after all
     // initializations and connections)
     Socket.Start();
+#endif
+}
+
+void CServer::ProcessFuzzInput ( CVector<uint8_t>& vecbyBuf,
+                                 int iNumBytesRead )
+{
+    // dummy client address
+    CHostAddress RecHostAddr ( QHostAddress ( QHostAddress::LocalHost ),
+                               12345 );
+
+    // create a channel for the client, simulating behaviour of
+    // CServer::PutAudioData
+    int iNewChanID = GetFreeChan();
+    vecChannels[iNewChanID].SetAddress ( RecHostAddr );
+    vecChannels[iNewChanID].ResetInfo();
+    for ( int i = 0; i < iMaxNumChannels; i++ )
+    {
+        vecChannels[iNewChanID].SetGain ( i, 1.0 );
+        vecChannels[i].SetGain ( iNewChanID, 1.0 );
+    }
+    // make CChannel think it's connected
+    vecChannels[iNewChanID].ResetTimeOutCounter();
+
+    bool bFirstMessage = true;
+    while ( iNumBytesRead > 0 )
+    {
+        // as we will only see some types of behaviour when multiple messages
+        // are received (e.g. audio data won't be processed until the channel
+        // parameters are configured), for some types of message where we know
+        // a fixed length, treat anything following them as another message
+        int iProcessBytes = iNumBytesRead;
+        if ( bFirstMessage &&
+             iNumBytesRead >= 4 &&
+             vecbyBuf[0] == 0 &&
+             vecbyBuf[1] == 0 )
+        {
+            const int iBase = 9;
+            int iExpectBytes = -1;
+
+            // keep this list trimmed, else the fuzzer will spend lots of time
+            // fruitlessly exploring combinations of messages...
+            switch ( vecbyBuf[2] | (vecbyBuf[3] << 8) )
+            {
+#if 0
+            case PROTMESSID_CLIENT_ID:
+            case PROTMESSID_LICENCE_REQUIRED:
+            case PROTMESSID_REQ_CHANNEL_LEVEL_LIST:
+            case PROTMESSID_RECORDER_STATE:
+            case PROTMESSID_CLM_REGISTER_SERVER_RESP:
+                iExpectBytes = iBase + 1;
+                break;
+
+            case PROTMESSID_ACKN:
+            case PROTMESSID_JITT_BUF_SIZE:
+            case PROTMESSID_MUTE_STATE_CHANGED:
+                iExpectBytes = iBase + 2;
+                break;
+
+            case PROTMESSID_CHANNEL_GAIN:
+            case PROTMESSID_CHANNEL_PAN:
+                iExpectBytes = iBase + 3;
+                break;
+
+            case PROTMESSID_CLM_PING_MS:
+                iExpectBytes = iBase + 4;
+                break;
+
+            case PROTMESSID_CLM_PING_MS_WITHNUMCLIENTS:
+                iExpectBytes = iBase + 5;
+                break;
+
+            case PROTMESSID_CLM_SEND_EMPTY_MESSAGE:
+                iExpectBytes = iBase + 6;
+                break;
+#endif
+
+            case PROTMESSID_NETW_TRANSPORT_PROPS:
+                iExpectBytes = iBase + 19;
+                break;
+
+            default:
+                break;
+            }
+
+            if ( iExpectBytes != -1 )
+            {
+                // we may have fewer bytes than a complete message
+                iProcessBytes = qMin( iProcessBytes, iExpectBytes );
+            }
+        }
+
+        // simulate the behaviour of CSocket::OnDataReceived
+        CVector<uint8_t> vecbyMesBodyData;
+        int              iRecCounter;
+        int              iRecID;
+        if ( !CProtocol::ParseMessageFrame ( vecbyBuf,
+                                             iProcessBytes,
+                                             vecbyMesBodyData,
+                                             iRecCounter,
+                                             iRecID ) )
+        {
+            CProtocol Protocol;
+
+            if ( CProtocol::IsConnectionLessMessageID ( iRecID ) )
+            {
+                OnProtcolCLMessageReceived ( iRecID, vecbyMesBodyData, RecHostAddr );
+            }
+            else
+            {
+                OnProtcolMessageReceived ( iRecCounter, iRecID, vecbyMesBodyData, RecHostAddr );
+            }
+        }
+        else
+        {
+            int iCurChanID;
+
+            PutAudioData ( vecbyBuf, iProcessBytes, RecHostAddr, iCurChanID );
+            // (ignore return value)
+        }
+
+        // simulate timer tick, to kick off audio processing
+        OnTimer();
+
+        // remove the data we've processed from the start
+        vecbyBuf.erase ( vecbyBuf.begin(), vecbyBuf.begin() + iProcessBytes );
+        iNumBytesRead -= iProcessBytes;
+        bFirstMessage = false;
+    }
 }
 
 template<unsigned int slotId>

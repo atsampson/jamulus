@@ -45,6 +45,11 @@
 #endif
 
 
+// Prototypes ******************************************************************
+
+static void    GetFuzzInput( CVector<uint8_t>& vecbyBuf,
+                             int&              iNumBytesRead );
+
 // Implementation **************************************************************
 
 int main ( int argc, char** argv )
@@ -63,6 +68,7 @@ int main ( int argc, char** argv )
     bool         bIsClient                   = true;
 #endif
     bool         bUseGUI                     = true;
+    bool         bIsFuzzing                  = false;
     bool         bStartMinimized             = false;
     bool         bShowComplRegConnList       = false;
     bool         bDisconnectAllClientsOnQuit = false;
@@ -100,8 +106,9 @@ int main ( int argc, char** argv )
                                "-Z",
                                "--fuzz" ) )
         {
-            ParseFuzzInput ();
-            return 0;
+            bIsFuzzing = true;
+            tsConsole << "- fuzzing enabled" << endl;
+            continue;
         }
 
 
@@ -617,6 +624,18 @@ int main ( int argc, char** argv )
 
     try
     {
+        // keep the maximum fuzzing input size reasonably small, as interesting
+        // messages tend to be short and the fuzzer will otherwise waste time
+        // exhaustively exploring huge messages
+        // XXX make this the audio packet size?
+        CVector<uint8_t> vecbyFuzzBuf ( 1024 );
+        int              iNumFuzzBytes = 0;
+
+        if ( bIsFuzzing )
+        {
+            GetFuzzInput ( vecbyFuzzBuf, iNumFuzzBytes );
+        }
+
         if ( bIsClient )
         {
             // Client:
@@ -631,8 +650,12 @@ int main ( int argc, char** argv )
             CClientSettings Settings ( &Client, strIniFileName );
             Settings.Load();
 
+            if ( bIsFuzzing )
+            {
+                // XXX
+            }
 #ifndef HEADLESS
-            if ( bUseGUI )
+            else if ( bUseGUI )
             {
                 // GUI object
                 CClientDlg ClientDlg ( &Client,
@@ -648,8 +671,8 @@ int main ( int argc, char** argv )
                 ClientDlg.show();
                 pApp->exec();
             }
-            else
 #endif
+            else
             {
                 // only start application without using the GUI
                 tsConsole << GetVersionAndNameStr ( false ) << endl;
@@ -677,8 +700,12 @@ int main ( int argc, char** argv )
                              bUseDoubleSystemFrameSize,
                              eLicenceType );
 
+            if ( bIsFuzzing )
+            {
+                Server.ProcessFuzzInput( vecbyFuzzBuf, iNumFuzzBytes );
+            }
 #ifndef HEADLESS
-            if ( bUseGUI )
+            else if ( bUseGUI )
             {
                 // load settings from init-file
                 CServerSettings Settings ( &Server, strIniFileName );
@@ -703,8 +730,8 @@ int main ( int argc, char** argv )
 
                 pApp->exec();
             }
-            else
 #endif
+            else
             {
                 // only start application without using the GUI
                 tsConsole << GetVersionAndNameStr ( false ) << endl;
@@ -879,5 +906,26 @@ bool GetNumericArgument ( QTextStream& tsConsole,
     else
     {
         return false;
+    }
+}
+
+void GetFuzzInput( CVector<uint8_t>& vecbyBuf,
+                   int&              iNumBytesRead )
+{
+    int iBytesLeft = vecbyBuf.Size();
+
+    // read from stdin until EOF, or buffer size reached
+    while ( iBytesLeft > 0 )
+    {
+        int iResult = read ( 0,
+                             (char *) &vecbyBuf[iNumBytesRead],
+                             iBytesLeft );
+        if ( iResult <= 0 )
+        {
+            break;
+        }
+
+        iNumBytesRead += iResult;
+        iBytesLeft -= iResult;
     }
 }
