@@ -176,6 +176,7 @@ LED bar:      lbr
 #define RED_BOUND_LED_BAR                7
 #define YELLOW_BOUND_LED_BAR             5
 
+#if 0
 // maximum number of connected clients at the server (must not be larger than 256)
 #define MAX_NUM_CHANNELS                 50 // max number channels for server
 
@@ -183,6 +184,10 @@ LED bar:      lbr
 // this parameter can safely be changed from 1 to MAX_NUM_CHANNELS
 // without any other changes in the code
 #define DEFAULT_USED_NUM_CHANNELS        10 // default used number channels for server
+#else
+#define MAX_NUM_CHANNELS                 2
+#define DEFAULT_USED_NUM_CHANNELS        2
+#endif
 
 // Maximum number of servers registered in the server list. If you want to
 // change this parameter, you most probably have to adjust MAX_SIZE_BYTES_NETW_BUF.
